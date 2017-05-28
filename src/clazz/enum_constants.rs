@@ -6,7 +6,7 @@ use super::super::nom::{
     IResult,
     ErrorKind
 };
-
+use std::ops::BitAnd;
 /*
  * Used to define Enumerators
  *
@@ -24,6 +24,17 @@ macro_rules! EnumBuilder {
         #[derive(Copy,Clone,Debug,PartialEq,Eq)]
         pub enum $NAME {
             $($VARNAME = $VARVAL),*
+        }
+        impl $NAME {
+            pub fn and_mask(val: u16) -> Vec<$NAME> {
+                let mut ret_val = Vec::new();
+                $(
+                    if ($VARVAL & val.clone()) > 0 {
+                        ret_val.push($NAME::$VARNAME);
+                    }
+                 )*
+                 ret_val
+            }
         }
         impl AsRef<u8> for $NAME {
             #[inline(always)]
@@ -56,7 +67,6 @@ macro_rules! EnumBuilder {
                 IResult::Incomplete(n) => IResult::Incomplete(n)
             }
         }
-
     };
     (@U16
         ENUM_NAME: $NAME: ident;
@@ -70,6 +80,17 @@ macro_rules! EnumBuilder {
         #[derive(Copy,Clone,Debug,PartialEq,Eq)]
         pub enum $NAME {
             $($VARNAME = $VARVAL),*
+        }
+        impl $NAME {
+            pub fn and_mask(val: u16) -> Vec<$NAME> {
+                let mut ret_val = Vec::new();
+                $(
+                    if ($VARVAL & val.clone()) > 0 {
+                        ret_val.push($NAME::$VARNAME);
+                    }
+                 )*
+                 ret_val
+            }
         }
         impl AsRef<u16> for $NAME {
             #[inline(always)]

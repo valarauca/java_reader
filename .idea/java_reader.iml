@@ -6,5 +6,6 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="Cargo &lt;java_reader&gt;" level="project" />
+    <orderEntry type="library" name="Rust &lt;java_reader&gt;" level="project" />
   </component>
 </module>

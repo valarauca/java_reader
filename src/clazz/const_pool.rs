@@ -76,6 +76,19 @@ impl<'a> PoolMembers<'a> {
             _ => false
         }
     }
+    #[inline(always)]
+    pub fn get_utf8(&self) -> Option<String> {
+        match self {
+            &PoolMembers::Utf8(ref val) => Some(val.to_string()),
+            _ => None
+        }
+    }
+    pub fn get_class(&self) -> Option<usize> {
+        match self {
+            &PoolMembers::ClassInfo(ref val) => Some(val.clone() as usize),
+            _ => None
+        }
+    }
     build_is!(@1 is_class_info; ClassInfo);
     build_is!(@2 is_field_ref; FieldRef);
     build_is!(@2 is_method_ref; MethodRef);
