@@ -4,7 +4,7 @@ extern crate nom;
 use nom::IResult;
 
 mod clazz;
-
+mod bytecode;
 
 use std::io::prelude::*;
 use std::fs::File;

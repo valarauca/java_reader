@@ -16,7 +16,10 @@ pub use self::enum_constants::{
 use self::enum_constants::parse_class_access_flag;
 
 mod const_pool;
-pub use self::const_pool::PoolMembers;
+pub use self::const_pool::{
+    PoolMembers,
+    ConstantsPool
+};
 use self::const_pool::parse_constant_pool;
 
 mod javautf8;
@@ -38,68 +41,23 @@ use std::borrow::Cow;
 ///
 /// Needs to have its constants propigated
 #[derive(Debug)]
-struct PreClass<'a> {
-    pub minor_version: u16,
-    pub major_version: u16,
-    pub constants: Vec<PoolMembers<'a>>,
-    pub access_flags: u16,
-    pub this_class: u16,
-    pub super_class: u16,
-    pub interfaces: Vec<u16>,
-    pub fields: Vec<FieldInfo<'a>>,
-    pub methods: Vec<MethodInfo<'a>>,
-    pub attributes: Vec<AttributeInfo<'a>>
-}
-impl<'a> PreClass<'a> {
-
-    #[inline(always)]
-    fn len(&self) -> usize {
-        self.constants.len()
-    }
-
-    /// Attempts to rsolve a constant utf8 string
-    fn get_utf8(&self, index: u16) -> Option<String> {
-        let index = index as usize;
-        if index >= self.len() {
-            return None;
-        }
-        self.constants[index].get_utf8()
-    }
-
-    ///Resolves the u16 -> CLASS -> u16 -> UTF8 -> Cow<'a,str> messiness
-    fn get_class(&self, index: u16) -> Option<String> {
-        let index = index as usize;
-        if index >= self.len() {
-            return None;
-        }
-        match self.constants[index].get_class() {
-            Option::Some(class_index) => self.constants[class_index].get_utf8(),
-            Option::None => None
-        }
-    }
-    fn get_this_class(&self) -> Option<String> {
-        self.get_class(self.this_class)
-    }
-    fn get_super_class(&self) -> Option<String> {
-        self.get_class(self.super_class)
-    }
-    fn get_interfaces(&self) -> Vec<String> {
-        if self.interfaces.len() == 0 {
-            //defer allocation
-            return Vec::with_capacity(0);
-        }
-        self.interfaces
-            .iter()
-            .map(|x| x.clone())
-            .filter_map(|x| self.get_class(x))
-            .collect()
-    }
+pub struct Class<'a> {
+    minor_version: u16,
+    major_version: u16,
+    constants: ConstantsPool<'a>,
+    access_flags: u16,
+    this_class: u16,
+    super_class: u16,
+    interfaces: Vec<u16>,
+    fields: Vec<FieldInfo<'a>>,
+    methods: Vec<MethodInfo<'a>>,
+    attributes: Vec<AttributeInfo<'a>>
 }
 /*
  * Reads a class File
  *
  */
-named!( parse_pre_class<PreClass>, do_parse!(
+named!( parse_pre_class<Class>, do_parse!(
     tag!(b"\xCA\xFE\xBA\xBE") >>
     min: be_u16 >>
     maj: be_u16 >>
@@ -115,7 +73,7 @@ named!( parse_pre_class<PreClass>, do_parse!(
     methods: count!( parse_method, method_count as usize) >>
     attri_count: be_u16 >>
     attri: count!( parse_attribute, attri_count as usize) >>
-    (PreClass {
+    (Class {
         minor_version: min,
         major_version: maj,
         constants: constpool,
@@ -129,48 +87,104 @@ named!( parse_pre_class<PreClass>, do_parse!(
     })
 ));
 
-///Reads a class file and attempts to build it into a clear
-/// easy to read structure
-#[derive(Debug)]
-pub struct Class {
-    pub minor_version: u16,
-    pub major_version: u16,
-    pub access_flags: Vec<ClassAccessFlags>,
-    pub this_class: String,
-    pub super_class: String,
-    pub interfaces: Vec<String>
-}
-impl Class {
 
-    /// Parse a class file
-    pub fn parse(buffer: &[u8]) -> Result<Class, String> {
-        let preclass = match parse_pre_class(buffer) {
-            IResult::Done(_, x) => x,
-            IResult::Error(e) => return Err(format!("parsing error {:#?}", e)),
-            IResult::Incomplete(_) => return Err(format!("File too short"))
-        };
-        let minor = preclass.minor_version.clone();
-        let major = preclass.major_version.clone();
-        let flags = ClassAccessFlags::and_mask(preclass.access_flags);
-        let this_class = match preclass.get_this_class() {
-            Option::Some(x) => x,
-            Option::None => return Err(format!("Could not resolve this class's type description"))
-        };
-        let super_class = match preclass.get_this_class() {
-            Option::Some(x) => x,
-            Option::None => return Err(format!("Could not resolve this class's super class type description"))
-        };
-        let interfaces = match preclass.get_interfaces() {
-            Option::Some(x) => x,
-            Option::None => return Err(format!("Could not resolve interfaces"))
-        };
-        Ok(Class {
-            minor_version: minor,
-            major_version: major,
-            access_flags: flags,
-            this_class: this_class,
-            super_class: super_class,
-            interfaces:interfaces
-        })
+///Common Errors
+///
+///If you see any with well formed jars please submit a bug report
+#[derive(Clone,Copy,Debug)]
+pub enum Fault {
+    
+    /// Your class file failed to parse
+    ParseError,
+    ClassLookUpFailure,
+    UTF8LookupFailure
+}
+
+impl<'a> Class<'a> {
+
+    /// Attempt to parse a class from a buffer of bytes
+    pub fn parse(buffer: &'a [u8]) -> Result<Class<'a>, Fault> {
+        match parse_pre_class(buffer) {
+            IResult::Done(_, item) => Ok(item),
+            IResult::Error(_) |
+            IResult::Incomplete(_) => Err(Fault::ParseError)
+        }
+    }
+
+    /// What is this class's name
+    pub fn get_this_class<'b>(&'b self) -> Result<Cow<'b, str>, Fault> {
+        match self.constants.get_class_name(self.this_class.clone()) {
+            Option::Some(var) => Ok(var),
+            Option::None => Err(Fault::ClassLookUpFailure)
+        }
+    }
+
+    /// What is the super class name
+    pub fn get_super_class<'b>(&'b self) -> Result<Cow<'b, str>, Fault> {
+        match self.constants.get_class_name(self.super_class.clone()) {
+            Option::Some(var) => Ok(var),
+            Option::None => Err(Fault::ClassLookUpFailure)
+        }
+    }
+
+    pub fn get_interfaces_count(&self) -> usize {
+        self.interfaces.len()
+    }
+    pub fn get_fields_count(&self) -> usize {
+        self.fields.len()
+    }
+    pub fn get_methods_count(&self) -> usize {
+        self.methods.len()
+    }
+    
+    ///Attempts to resolve an interface with its index
+    pub fn get_interfaces<'b>(&'b self) -> Result<Vec<Cow<'b, str>>,Fault> {
+        let mut retvec = Vec::with_capacity(0);
+        for iface in self.interfaces.iter() {
+            match self.constants.get_class_name(iface.clone()) {
+                Option::Some(var) => retvec.push(var),
+                Option::None => return Err(Fault::ClassLookUpFailure)
+            }
+        }
+        Ok(retvec)
+    }
+
+    /// Reads all fields
+    ///
+    /// Returns a tuple of `(Name,Descriptor)` for each field
+    pub fn get_fields<'b>(&'b self) -> Result<Vec<(Cow<'b, str>,Cow<'b,str>)>,Fault> {
+        let mut retvec = Vec::with_capacity(0);
+        for field in self.fields.iter() {
+            let name = match self.constants.get_utf8(field.name_index.clone()) {
+                Option::Some(var) => var,
+                Option::None => return Err(Fault::UTF8LookupFailure)
+            };
+            let desc = match self.constants.get_utf8(field.descriptor_index.clone()) {
+                Option::Some(var) => var,
+                Option::None => return Err(Fault::UTF8LookupFailure)
+            };
+            retvec.push( (name,desc) );
+        }
+        Ok(retvec)
+    }
+    
+    /// Reads all methods
+    ///
+    /// Returns a tuple of `(Name,Descriptor)` for each field
+    pub fn get_methods<'b>(&'b self) -> Result<Vec<(Cow<'b, str>,Cow<'b,str>)>,Fault> {
+        let mut retvec = Vec::with_capacity(0);
+        for method in self.methods.iter() {
+            let name = match self.constants.get_utf8(method.name_index.clone()) {
+                Option::Some(var) => var,
+                Option::None => return Err(Fault::UTF8LookupFailure)
+            };
+            let desc = match self.constants.get_utf8(method.descriptor_index.clone()) {
+                Option::Some(var) => var,
+                Option::None => return Err(Fault::UTF8LookupFailure)
+            };
+            retvec.push( (name,desc) );
+        }
+        Ok(retvec)
     }
 }
+

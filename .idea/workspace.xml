@@ -1,16 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="3ed488d6-5d10-4e70-9d9c-b66c54a07d8b" name="Default" comment="">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/.idea/libraries/Rust__java_reader_.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/java_reader.iml" afterPath="$PROJECT_DIR$/.idea/java_reader.iml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/clazz/attributes.rs" afterPath="$PROJECT_DIR$/src/clazz/attributes.rs" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/clazz/const_pool.rs" afterPath="$PROJECT_DIR$/src/clazz/const_pool.rs" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/clazz/enum_constants.rs" afterPath="$PROJECT_DIR$/src/clazz/enum_constants.rs" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/clazz/mod.rs" afterPath="$PROJECT_DIR$/src/clazz/mod.rs" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main.rs" afterPath="$PROJECT_DIR$/src/main.rs" />
-    </list>
+    <list default="true" id="3ed488d6-5d10-4e70-9d9c-b66c54a07d8b" name="Default" comment="" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
