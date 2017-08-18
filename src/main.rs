@@ -1,4 +1,7 @@
 
+#![recursion_limit="40000"]
+#![feature(concat_idents)]
+
 #[macro_use]
 extern crate nom;
 use nom::IResult;
