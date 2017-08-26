@@ -36,17 +36,8 @@ pub fn get_pos() -> usize {
 
 /// Ensure position is zero (this is always done when parsing starts
 #[inline(always)]
-fn set_pos_init() {
-    POSITION.with(|f| f.store(0, Ordering::Relaxed));
-}
-
-/// This function just calls `set_pos_init`
-///
-/// It mostly exists to be called inline in the parser
-#[inline(always)]
-pub fn reset_align_code<'a>(buffer: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
-    set_pos_init();
-    IResult::Done(&buffer[0..0], buffer)
+pub fn set_pos_init(x: usize) {
+    POSITION.with(|f| f.store(x, Ordering::Relaxed));
 }
 
 /// Handle aligning the opcodes
@@ -59,7 +50,7 @@ pub fn align_code<'a>(buffer: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
     if buffer_len <= 4 {
         return IResult::Incomplete(Needed::Unknown);
     }
-    match (pos & 0b00000011usize) {
+    match pos & 0b00000011usize {
         3 => {
             //this is account for preceeding opcode
             move_pos(2);
